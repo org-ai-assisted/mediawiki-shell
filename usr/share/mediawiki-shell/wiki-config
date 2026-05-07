@@ -27,10 +27,10 @@ source_credentials() {
 
   # The file '~/.credentials' is for backwards compatibility and should be
   # removed on future releases.
-  for f in /usr/share/mediawiki-shell/credentials \
+  for file_name in /usr/share/mediawiki-shell/credentials \
     ~/.mediawikishell_credentials \
     ~/.credentials; do
-    test -f "$f" || continue
+    test -f "${file_name}" || continue
     ## Refuse to 'source' a credentials file with group- or world-write
     ## bits set: 'source' executes its argument as bash, so a writable
     ## credentials file is an arbitrary code execution sink for any
@@ -41,15 +41,15 @@ source_credentials() {
     ##   *[2367]?  group-write bit set (2nd-to-last octal digit is 2/3/6/7)
     ##   *[2367]   other-write bit set (last octal digit is 2/3/6/7)
     ##   ''        stat returned no mode -> fail closed
-    mode="$(stat -c '%a' -- "$f")"
+    mode="$(stat -c '%a' -- "${file_name}")"
     case "$mode" in
       *[2367]?|*[2367]|'')
-        die 1 "credentials file '$f' has insecure or unreadable mode '$mode'; refusing to source"
+        die 1 "credentials file '${file_name}' has insecure or unreadable mode '$mode'; refusing to source"
         ;;
     esac
-    log info "Sourcing credentials file: $f"
+    log info "Sourcing credentials file: ${file_name}"
     # shellcheck source=credentials disable=SC1090,SC1091
-    source -- "$f"
+    source -- "${file_name}"
   done
 }
 
