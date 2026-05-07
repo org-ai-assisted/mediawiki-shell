@@ -97,22 +97,30 @@ fi
 
 mw-login-test "$default_wiki_url_target"
 
-all_pages="$(
-  curl_run \
-    "${curl_opts[@]}" \
-    --get \
-    --data-urlencode "cmtitle=Category:$multiwiki_category" \
-    "${WIKI_API}?action=query&format=json&list=categorymembers&cmlimit=500"
-)"
-
-## TODO: cmcontinue
-#https://www.kicksecure.com/w/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:MultiWiki&cmcontinue=page|434f444553454c454354|748
-
 for multiwiki_extra_pages_item in $multiwiki_extra_pages; do
   stecho "$multiwiki_extra_pages_item" | tee -a -- "$allpages_file" >/dev/null
 done
 
-stecho "$all_pages" | jq -r ".query.categorymembers[] | .title" | tee -a -- "$allpages_file" >/dev/null
+## Iterate cmcontinue so categories with more than cmlimit (500) members
+## are not silently truncated.
+cm_continue=""
+while true; do
+  all_pages="$(
+    curl_run \
+      "${curl_opts[@]}" \
+      --get \
+      --data-urlencode "cmtitle=Category:$multiwiki_category" \
+      --data-urlencode "cmcontinue=$cm_continue" \
+      "${WIKI_API}?action=query&format=json&list=categorymembers&cmlimit=500"
+  )"
+
+  stecho "$all_pages" | jq -r ".query.categorymembers[] | .title" | tee -a -- "$allpages_file" >/dev/null
+
+  cm_continue="$(stecho "$all_pages" | jq -r '.continue.cmcontinue // empty')"
+  if [ -z "$cm_continue" ]; then
+    break
+  fi
+done
 
 test -f "$allpages_file"
 if [ ! -s "$allpages_file" ]; then

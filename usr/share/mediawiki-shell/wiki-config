@@ -23,7 +23,7 @@ require_auth_data() {
 }
 
 source_credentials() {
-  local f
+  local f mode
 
   # The file '~/.credentials' is for backwards compatibility and should be
   # removed on future releases.
@@ -31,6 +31,22 @@ source_credentials() {
     ~/.mediawikishell_credentials \
     ~/.credentials; do
     test -f "$f" || continue
+    ## Refuse to 'source' a credentials file with group- or world-write
+    ## bits set: 'source' executes its argument as bash, so a writable
+    ## credentials file is an arbitrary code execution sink for any
+    ## local user with the relevant write permission.
+    ##
+    ## Mode is the octal permission string from 'stat -c %a' (e.g. 600,
+    ## 644, 0664). Pattern intent (matched against last 2 digits):
+    ##   *[2367]?  group-write bit set (2nd-to-last octal digit is 2/3/6/7)
+    ##   *[2367]   other-write bit set (last octal digit is 2/3/6/7)
+    ##   ''        stat returned no mode -> fail closed
+    mode="$(stat -c '%a' -- "$f")"
+    case "$mode" in
+      *[2367]?|*[2367]|'')
+        die 1 "credentials file '$f' has insecure or unreadable mode '$mode'; refusing to source"
+        ;;
+    esac
     log info "Sourcing credentials file: $f"
     # shellcheck source=credentials disable=SC1090,SC1091
     source -- "$f"
