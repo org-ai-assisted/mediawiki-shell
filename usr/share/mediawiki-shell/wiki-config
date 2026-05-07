@@ -35,10 +35,18 @@ source_credentials() {
     ## bits set: 'source' executes its argument as bash, so a writable
     ## credentials file is an arbitrary code execution sink for any
     ## local user with the relevant write permission.
+    ##
+    ## Mode is the octal permission string from 'stat -c %a' (e.g. 600,
+    ## 644, 0664). Pattern intent (matched against last 2 digits):
+    ##   *[2367]?  group-write bit set (2nd-to-last octal digit is 2/3/6/7)
+    ##   *[2367]   other-write bit set (last octal digit is 2/3/6/7)
+    ##   ''        stat returned no mode -> fail closed
     mode="$(stat -c '%a' -- "$f")"
-    if (( 8#${mode:-666} & 022 )); then
-      die 1 "credentials file '$f' is group- or world-writable (mode '$mode'); refusing to source"
-    fi
+    case "$mode" in
+      *[2367]?|*[2367]|'')
+        die 1 "credentials file '$f' has insecure or unreadable mode '$mode'; refusing to source"
+        ;;
+    esac
     log info "Sourcing credentials file: $f"
     # shellcheck source=credentials disable=SC1090,SC1091
     source -- "$f"
