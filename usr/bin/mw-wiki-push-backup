@@ -25,7 +25,7 @@ Options:
   --dry-run                Show what would be pushed without actually pushing.
 Example:
   ${0##*/} 'https://www.kicksecure.com/w' ~/derivative-backup/kicksecure-wiki-backup
-  ${0##*/} --git-diff-arg=HEAD~3 'https://www.kicksecure.com/w' ~/derivative-backup/kicksecure-wiki-backup
+  ${0##*/} --git-diff-arg=HEAD~1 'https://www.kicksecure.com/w' ~/derivative-backup/kicksecure-wiki-backup
   ${0##*/} --dry-run 'https://www.kicksecure.com/w' ~/derivative-backup/kicksecure-wiki-backup" >&2
   exit 1
 }
