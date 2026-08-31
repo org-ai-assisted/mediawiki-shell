@@ -133,7 +133,7 @@ if [ "${review_result}" = "Success" ]; then
 fi
 
 printf '%s\n' "${TMPFOLDER}/review-result.json"
-jq -- "${TMPFOLDER}/review-result.json"
+jq . -- "${TMPFOLDER}/review-result.json"
 
 review_error_code=$(jq --raw-output '.error.code' -- "${TMPFOLDER}/review-result.json")
 if [ "${review_error_code}" = "notreviewable" ]; then

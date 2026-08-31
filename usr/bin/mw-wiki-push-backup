@@ -126,7 +126,13 @@ mw-login-test "${wiki_url}"
 ## --diff-filter=AM: only Added or Modified files (not Deleted).
 ## --name-only: output file names only.
 ## --relative: paths relative to backup_dir.
-modified_files="$(git -C "${backup_dir}" diff --diff-filter=AM --name-only --relative "${git_diff_arg}" -- '*.mw')" || true
+git_diff_rc=0
+modified_files="$(git -C "${backup_dir}" diff --diff-filter=AM --name-only --relative "${git_diff_arg}" -- '*.mw')" || git_diff_rc=$?
+## A failed 'git diff' (e.g. an unresolvable --git-diff-arg) also yields empty
+## stdout, so distinguish it from a genuine no-changes result before exiting 0.
+if [ "${git_diff_rc}" != "0" ]; then
+  die 1 "git diff failed in '${backup_dir}' (rc ${git_diff_rc}); is --git-diff-arg '${git_diff_arg}' valid?"
+fi
 
 if [ -z "${modified_files}" ]; then
   log info "No modified .mw files found. Nothing to push."

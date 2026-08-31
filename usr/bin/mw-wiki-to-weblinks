@@ -47,7 +47,10 @@ log info "Try: tail -f -- ${TMPFOLDER}/wiki-links/all-links.txt"
 mw-folder-to-weblinks https://www.kicksecure.com/wiki "${input_dir}kicksecure-wiki-backup" | tee -a -- "${TMPFOLDER}/wiki-links/all-links.txt"
 mw-folder-to-weblinks https://www.whonix.org/wiki "${input_dir}whonix-wiki-backup" | tee -a -- "${TMPFOLDER}/wiki-links/all-links.txt"
 
-grep --invert-match -- "## " "${TMPFOLDER}/wiki-links/all-links.txt" | tee -- "${TMPFOLDER}/wiki-links/links-without-comments.txt" >/dev/null
+## grep exits 1 (not an error) when every line is a '## ' comment, i.e. no
+## links were found; under pipefail+errexit that would abort. Accept exit 1,
+## still propagate a real grep error (exit 2). tee dropped: it only wrote the file.
+grep --invert-match -- "## " "${TMPFOLDER}/wiki-links/all-links.txt" >"${TMPFOLDER}/wiki-links/links-without-comments.txt" || [ "$?" -eq 1 ]
 sort --unique -- "${TMPFOLDER}/wiki-links/links-without-comments.txt" | tee -- "${TMPFOLDER}/wiki-links/links-sorted.txt" >/dev/null
 
 log info "Try: cat -- ${TMPFOLDER}/wiki-links/links-sorted.txt"

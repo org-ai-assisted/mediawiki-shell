@@ -111,6 +111,11 @@ fi
 
 dry_run_skip "upload file '${page_file}' to '${WIKI_URL}'"
 
+## --form-string for the literal fields below: --form would treat a leading
+## '@'/'<' or a ';type='/';filename=' substring in the value as a
+## local-file/metadata directive, and filename/comment carry
+## attacker-influenced page titles (e.g. a source-wiki page 'File:@/etc/passwd').
+## Only the real file upload (file=@...) uses --form.
 curl_run \
   "${curl_opts[@]}" \
   --cookie "${cookie_jar}" \
@@ -118,11 +123,11 @@ curl_run \
   --header "Accept-Language: en-GB" \
   --header "Connection: keep-alive" \
   --header "Expect:" \
-  --form "token=${csrf_token}" \
-  --form "filename=${page_file}" \
+  --form-string "token=${csrf_token}" \
+  --form-string "filename=${page_file}" \
   --form "file=@${new_file}" \
-  --form "comment=${edit_msg}" \
-  --form "ignorewarnings=yes" \
+  --form-string "comment=${edit_msg}" \
+  --form-string "ignorewarnings=yes" \
   --output "${TMPFOLDER}/upload-result.json" \
   --request "POST" \
   "${WIKI_API}?action=upload&format=json&tags=mediawiki-shell&bot"
