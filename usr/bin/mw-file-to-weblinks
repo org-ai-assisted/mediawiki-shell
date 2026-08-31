@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 ## Takes a file as an input parameter.
 ## Goes through line by line of that file, goes through every line word by word
@@ -28,14 +31,14 @@ fi
 not_as_root
 
 file_name="$1"
-test -r "$file_name"
+test -r "${file_name}"
 
 while IFS= read -r word; do
-  if [ -z "$word" ]; then
+  if [ -z "${word}" ]; then
     continue
   fi
-  [[ "$word" =~ .*https?://.* ]] || true
+  [[ "${word}" =~ .*https?://.* ]] || true
   if [ -n "${BASH_REMATCH[0]-}" ]; then
     printf "%s\n" "${BASH_REMATCH[0]}"
   fi
-done < <(tr -s '[:blank:]' '[\n*]' <"$file_name")
+done < <(tr -s '[:blank:]' '[\n*]' <"${file_name}")

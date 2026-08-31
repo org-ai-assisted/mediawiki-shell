@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 usage() {
   printf '%s\n' "Usage: ${0##*/} [WIKI] [OUTPUT_DIR] [FETCHER]
@@ -23,7 +26,7 @@ Example:
 }
 
 default_wiki_url="https://www.kicksecure.com/w"
-default_output_dir="$HOME/derivative-backup/kicksecure-wiki-backup"
+default_output_dir="${HOME}/derivative-backup/kicksecure-wiki-backup"
 default_fetcher="mw-wiki-fetch-backup"
 if [[ "${1-}" =~ (-h|--help) ]]; then
   usage

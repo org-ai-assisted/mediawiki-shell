@@ -3,13 +3,13 @@
 ## Copyright (C) 2025 - 2025 ENCRYPTED SUPPORT LLC <adrelanos@whonix.org>
 ## See the file COPYING for copying conditions.
 
-## style-ok: no-strict - needs to handle Unicode.
 set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -182,21 +182,23 @@ page_exists_on_source() {
 ## inline tag is left in place, which fails safe: the page stays in the
 ## category and is simply reported again on the next run.
 strip_category_tag() {
-  local infile outfile line trimmed
+  local infile outfile line trimmed trimmed_lower category_lower
   infile="$1"
   outfile="$2"
-  shopt -s nocasematch
+  ## Case-insensitive compare by lowercasing both sides (LC_ALL=C folds ASCII,
+  ## which is all the '[[category:' keyword and the tag need).
+  category_lower="${multiwiki_category,,}"
   while IFS= read -r line || [ -n "${line}" ]; do
     ## Trim leading and trailing whitespace for the comparison only.
     trimmed="${line#"${line%%[![:space:]]*}"}"
     trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-    if [[ "${trimmed}" == "[[category:${multiwiki_category}]]" \
-       || "${trimmed}" == "[[category:${multiwiki_category}|"*"]]" ]]; then
+    trimmed_lower="${trimmed,,}"
+    if [[ "${trimmed_lower}" == "[[category:${category_lower}]]" \
+       || "${trimmed_lower}" == "[[category:${category_lower}|"*"]]" ]]; then
       continue
     fi
     printf '%s\n' "${line}"
   done <"${infile}" >"${outfile}"
-  shopt -u nocasematch
 }
 
 ## Delete (or, for a still-existing source page, de-tag) target pages that

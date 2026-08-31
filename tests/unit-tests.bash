@@ -21,10 +21,11 @@
 
 set -o errexit
 set -o nounset
-set -o pipefail
 set -o errtrace
+set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 if [ "${CI:-}" != "true" ]; then
   printf '%s\n' "$0: These tests are only supposed to run on CI (set CI=true)." >&2
@@ -74,12 +75,28 @@ roundtrip_titles=(
   "Category:Tor"
 )
 for title in "${roundtrip_titles[@]}"; do
-  enc="$(mw-urlencode --encode-page-to-filename "${title}")" || { fail "encode '${title}' errored"; continue; }
+  rc=0
+  enc="$(mw-urlencode --encode-page-to-filename "${title}")" || rc=$?
+  if [ "${rc}" != "0" ]; then
+    fail "encode '${title}' errored"
+    continue
+  fi
   ## Encoded form must be a single line and contain no '/' (subpage separator
   ## must be percent-encoded so it cannot create directories) and no spaces.
-  if printf '%s' "${enc}" | grep -q '/'; then fail "encoded '${title}' still contains '/': '${enc}'"; continue; fi
-  if printf '%s' "${enc}" | grep -q ' '; then fail "encoded '${title}' still contains a space: '${enc}'"; continue; fi
-  dec="$(mw-urlencode --decode-filename-to-page "${enc}")" || { fail "decode '${enc}' errored"; continue; }
+  if [[ "${enc}" == */* ]]; then
+    fail "encoded '${title}' still contains '/': '${enc}'"
+    continue
+  fi
+  if [[ "${enc}" == *" "* ]]; then
+    fail "encoded '${title}' still contains a space: '${enc}'"
+    continue
+  fi
+  rc=0
+  dec="$(mw-urlencode --decode-filename-to-page "${enc}")" || rc=$?
+  if [ "${rc}" != "0" ]; then
+    fail "decode '${enc}' errored"
+    continue
+  fi
   assert_eq "round-trip '${title}' (enc='${enc}')" "${title}" "${dec}"
 done
 
@@ -118,8 +135,8 @@ assert_eq "import-xml page count (3 .mw files, 1 non-.mw ignored)" "3" "${count}
 ## XML well-formedness + content escaping + subpage title decode. xmllint is a
 ## guaranteed dependency (libxml2-utils, installed by the unit-tests workflow).
 if xmllint --noout "${xml_out}" 2>/dev/null; then pass "import XML is well-formed"; else fail "import XML is not well-formed"; fi
-if grep -q '<title>Dev/mediawiki</title>' "${xml_out}"; then pass "subpage filename %2F decoded back to '/' in title"; else fail "subpage title not decoded"; fi
-if grep -q 'Hello &lt;world&gt; &amp; friends' "${xml_out}"; then pass "page text XML-escaped"; else fail "page text not XML-escaped"; fi
+if grep --quiet '<title>Dev/mediawiki</title>' "${xml_out}"; then pass "subpage filename %2F decoded back to '/' in title"; else fail "subpage title not decoded"; fi
+if grep --quiet 'Hello &lt;world&gt; &amp; friends' "${xml_out}"; then pass "page text XML-escaped"; else fail "page text not XML-escaped"; fi
 
 ## Unsafe titles must be skipped, not written (path traversal / absolute / control).
 unsafe_dir="$(mktemp -d)"
@@ -180,6 +197,23 @@ bp_roundtrip() {
 for t in "Documentation" "Dev/mediawiki" "Template:Header" "Foo&Bar"; do
   assert_eq "set/decode_backup_page_item round-trip '${t}'" "${t}" "$(bp_roundtrip "${t}")"
 done
+
+## ===========================================================================
+printf '%s\n' "=== common: exit_handler exit-code propagation ==="
+## ===========================================================================
+## A caller that cleans up before exiting clobbers $?, so it saves the code and
+## passes it explicitly. exit_handler must honor that argument, otherwise a
+## failing command exits 0 (silent failure). With no argument it reads $?.
+rc=0
+( source /usr/share/mediawiki-shell/common >/dev/null 2>&1
+  true  ## clobber $? to 0, as a cleanup step would
+  exit_handler 7 ) >/dev/null 2>&1 || rc=$?
+assert_rc "exit_handler honors explicit code over clobbered \$?" "7" "${rc}"
+
+rc=0
+( source /usr/share/mediawiki-shell/common >/dev/null 2>&1
+  ( exit 5 ); exit_handler ) >/dev/null 2>&1 || rc=$?
+assert_rc "exit_handler falls back to \$? with no argument" "5" "${rc}"
 
 ## ===========================================================================
 printf '%s\n' "=== SUMMARY ==="

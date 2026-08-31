@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -80,8 +83,8 @@ wiki_link_archiver() {
   ensure_wiki_git_up_to_date "${kicksecure_wiki_path}" "${kicksecure_wiki_git_repo}"
   ensure_wiki_git_up_to_date "${whonix_wiki_path}" "${whonix_wiki_git_repo}"
 
-  echo 'Please paste in the CAPTCHA cookie obtained from your web browser.'
-  echo 'Press Enter to begin archiving.'
+  printf '%s\n' 'Please paste in the CAPTCHA cookie obtained from your web browser.'
+  printf '%s\n' 'Press Enter to begin archiving.'
   read -r captcha_cookie
 
   ## Generates full list of links, this takes a long time so any user input

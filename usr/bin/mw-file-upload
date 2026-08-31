@@ -9,6 +9,8 @@ set -o errtrace
 set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -62,36 +64,36 @@ check_vars_exist new_file page_file
 
 ## Defense-in-depth: check page_file for malicious unicode before
 ## sending it to the wiki API as the upload filename.
-printf '%s\n' "$page_file" | unicode-show
+printf '%s\n' "${page_file}" | unicode-show
 
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
 
-log info "WIKI_URL             : $WIKI_URL"
-log info "new_file             : $new_file"
-log info "page_file            : $page_file"
+log info "WIKI_URL             : ${WIKI_URL}"
+log info "new_file             : ${new_file}"
+log info "page_file            : ${page_file}"
 
-if [ -d "$new_file" ]; then
-  die 1 "new_file '$new_file' is a folder!"
+if [ -d "${new_file}" ]; then
+  die 1 "new_file '${new_file}' is a folder!"
 fi
 
-if [ ! -r "$new_file" ]; then
-  die 2 "Local file '$new_file' does not exist or is not readable!"
+if [ ! -r "${new_file}" ]; then
+  die 2 "Local file '${new_file}' does not exist or is not readable!"
 fi
 
-if [ ! -s "$new_file" ]; then
-  log info "Local file '$new_file' was empty."
+if [ ! -s "${new_file}" ]; then
+  log info "Local file '${new_file}' was empty."
   exit 0
 fi
 
-log info "Uploading file '${WIKI_URL}' '$new_file'..."
+log info "Uploading file '${WIKI_URL}' '${new_file}'..."
 
-mw-login-test "$WIKI_URL"
+mw-login-test "${WIKI_URL}"
 
 curl_run \
   "${curl_opts[@]}" \
-  --cookie "$cookie_jar" \
-  --cookie-jar "$cookie_jar" \
+  --cookie "${cookie_jar}" \
+  --cookie-jar "${cookie_jar}" \
   --header "Accept-Language: en-GB" \
   --header "Connection: keep-alive" \
   --compressed \
@@ -107,19 +109,19 @@ else
   die 1 "Edit token for file not set."
 fi
 
-dry_run_skip "upload file '$page_file' to '$WIKI_URL'"
+dry_run_skip "upload file '${page_file}' to '${WIKI_URL}'"
 
 curl_run \
   "${curl_opts[@]}" \
-  --cookie "$cookie_jar" \
-  --cookie-jar "$cookie_jar" \
+  --cookie "${cookie_jar}" \
+  --cookie-jar "${cookie_jar}" \
   --header "Accept-Language: en-GB" \
   --header "Connection: keep-alive" \
   --header "Expect:" \
-  --form "token=$csrf_token" \
-  --form "filename=$page_file" \
-  --form "file=@$new_file" \
-  --form "comment=$edit_msg" \
+  --form "token=${csrf_token}" \
+  --form "filename=${page_file}" \
+  --form "file=@${new_file}" \
+  --form "comment=${edit_msg}" \
   --form "ignorewarnings=yes" \
   --output "${TMPFOLDER}/upload-result.json" \
   --request "POST" \
@@ -132,23 +134,23 @@ test -r "${TMPFOLDER}/upload-result.json"
 ## FIXME: Sanitizing JSON before handing to jq is prohibited, see Bash
 ## style guide rule R-140. Sanitize after parsing with jq.
 edit_result_output="$(stcat "${TMPFOLDER}/upload-result.json")"
-if [ "$(jq -r ".error.code" <<<"$edit_result_output")" = "fileexists-no-change" ]; then
+if [ "$(jq -r ".error.code" <<<"${edit_result_output}")" = "fileexists-no-change" ]; then
   log info "Upload file success."
   exit 0
 fi
 
-edit_result_jq="$(jq -r ".edit.result" <<<"$edit_result_output")"
-if [ "$edit_result_jq" = "Success" ]; then
+edit_result_jq="$(jq -r ".edit.result" <<<"${edit_result_output}")"
+if [ "${edit_result_jq}" = "Success" ]; then
   log info "Upload (edit) file success."
   exit 0
 fi
 
-upload_result_jq="$(jq -r ".upload.result" <<<"$edit_result_output")"
-if [ "$upload_result_jq" = "Success" ]; then
+upload_result_jq="$(jq -r ".upload.result" <<<"${edit_result_output}")"
+if [ "${upload_result_jq}" = "Success" ]; then
   log info "Upload (upload) file success."
   exit 0
 fi
 
 log error "Check result on the file: ${TMPFOLDER}/upload-result.json"
-jq . <<<"$edit_result_output" | stcat >&2
+jq . <<<"${edit_result_output}" | stcat >&2
 die 1 "Upload file error."
