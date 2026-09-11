@@ -7,8 +7,13 @@
 ## workflow runtime.
 
 dist-ai-tests:
+  ## The offline suite has no pytest/hypothesis (pure shell driving the python
+  ## codec + common). common's collect_reqs needs retry/curl/jq/safe-rm/
+  ## sponge(moreutils)/realpath(coreutils); mw-urlencode/mw-build-import-xml need
+  ## python3; the XML well-formedness check uses xmllint (libxml2-utils).
+  apt-packages: "python3 safe-rm moreutils jq curl retry libxml2-utils"
   ## The mw-* tools and usr/share/mediawiki-shell/common source helper-scripts'
-  ## log_run_die.sh, has.sh, not_as_root.sh, strings.bsh and parse_opt.sh by the
+  ## log_run_die.sh, has.bsh, not_as_root.sh, strings.bsh and parse_opt.sh by the
   ## '${HELPER_SCRIPTS_PATH:-}' path with a relative '# shellcheck source='
   ## directive. Provide helper-scripts as the repo sibling so the
   ## pre-push-static gate's shellcheck FOLLOWS the source instead of emitting

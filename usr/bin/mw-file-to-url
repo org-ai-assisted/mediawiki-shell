@@ -7,6 +7,10 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -30,33 +34,33 @@ check_vars_exist output_file origin
 
 ## Defense-in-depth: check origin (page file title) for malicious unicode
 ## before interpolating it into API URLs.
-printf '%s\n' "$origin" | unicode-show
+printf '%s\n' "${origin}" | unicode-show
 
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
 
-log info "Fetching imageinfo '${WIKI_API}' '$origin'..."
+log info "Fetching imageinfo '${WIKI_API}' '${origin}'..."
 
-if test -d "$output_file"; then
-  die 1 "output_file '$output_file' is a folder!"
+if test -d "${output_file}"; then
+  die 1 "output_file '${output_file}' is a folder!"
 fi
 
-safe-rm -f -- "$output_file"
-touch -- "$output_file"
-test -w "$output_file"
+safe-rm -f -- "${output_file}"
+touch -- "${output_file}"
+test -w "${output_file}"
 
 ## https://en.wikipedia.org/w/api.php?action=query&prop=imageinfo&iiprop=url&titles=File:Limbo%20Royal%20Blood.jpg
 ## MediaWiki API return json, which contains an already encoded URL.
 curl_run \
   "${curl_opts[@]}" \
-  --cookie "$cookie_jar" \
-  --cookie-jar "$cookie_jar" \
+  --cookie "${cookie_jar}" \
+  --cookie-jar "${cookie_jar}" \
   --header "Accept-Language: en-GB" \
   --header "Connection: keep-alive" \
   --compressed \
   --output "${TMPFOLDER}/wiki-remote-file-name-fetch-to-file.json" \
   --get \
-  --data-urlencode "titles=$origin" \
+  --data-urlencode "titles=${origin}" \
   "${WIKI_API}?action=query&format=json&prop=imageinfo&iiprop=url"
 
 log info "Network for imageinfo ok."
@@ -68,15 +72,15 @@ query_result=$(stcat "${TMPFOLDER}/wiki-remote-file-name-fetch-to-file.json")
 ## example query_result in case of error:
 ## {"error":{"code":"internal_api_error_DBConnectionError","info":"[98c54e341525482101c71b32] Caught exception of type Wikimedia\\Rdbms\\DBConnectionError","errorclass":"Wikimedia\\Rdbms\\DBConnectionError"}}
 
-log info "Saving URL in file output_file: '$output_file'"
+log info "Saving URL in file output_file: '${output_file}'"
 
-url="$(stecho "$query_result" | jq -r ".query.pages[].imageinfo[].url")"
+url="$(stecho "${query_result}" | jq -r ".query.pages[].imageinfo[].url")"
 ## url contains encoded URL.
 ## url example:
 ## https://www.kicksecure.com/w/images/7/74/MediaWiki-2020-logo-%28black%29.svg
 
-overwrite "$output_file" "$url" >/dev/null
+overwrite "${output_file}" "${url}" >/dev/null
 
-test -r "$output_file"
+test -r "${output_file}"
 
 log info "Fetch imageinfo success."

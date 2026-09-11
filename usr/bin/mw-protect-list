@@ -9,6 +9,8 @@ set -o errtrace
 set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -66,75 +68,75 @@ protect_reason="${4-"${default_protect_reason}"}"
 
 check_vars_exist list_file
 
-if [ -d "$list_file" ]; then
-  die 1 "list_file '$list_file' is a folder!"
+if [ -d "${list_file}" ]; then
+  die 1 "list_file '${list_file}' is a folder!"
 fi
 
-if [ ! -r "$list_file" ]; then
-  die 2 "List file '$list_file' does not exist or is not readable!"
+if [ ! -r "${list_file}" ]; then
+  die 2 "List file '${list_file}' does not exist or is not readable!"
 fi
 
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
 
-log info "WIKI_URL  : $WIKI_URL"
-log info "WIKI_API  : $WIKI_API"
-log info "list_file : $list_file"
+log info "WIKI_URL  : ${WIKI_URL}"
+log info "WIKI_API  : ${WIKI_API}"
+log info "list_file : ${list_file}"
 
 ## Defense-in-depth: check the whole list for malicious unicode up front.
-unicode-show "$list_file"
+unicode-show "${list_file}"
 
 login_function() {
   log info "Logging in..."
-  mw-login-test "$WIKI_URL"
+  mw-login-test "${WIKI_URL}"
   log info "Login ok."
 }
 
 protect_page() {
   protect_page_exit_code=0
-  mw-protect "$WIKI_URL" "$page_to_protect" "$protect_expiry" "$protect_reason" \
+  mw-protect "${WIKI_URL}" "${page_to_protect}" "${protect_expiry}" "${protect_reason}" \
     || protect_page_exit_code="$?"
 }
 
 login_function
 
 ## Count non-blank lines so the progress display matches the pages processed.
-counter_total="$(awk 'NF{counter++} END {print counter+0}' "$list_file")"
+counter_total="$(awk 'NF{counter++} END {print counter+0}' "${list_file}")"
 
 counter_currently=0
 error_counter=0
 while IFS=$'\n' read -r item_from_list; do
   ## Skip blank or whitespace-only lines.
-  if [[ "$item_from_list" =~ ^[[:space:]]*$ ]]; then
+  if [[ "${item_from_list}" =~ ^[[:space:]]*$ ]]; then
     continue
   fi
   (( counter_currently++ )) || true
   ## Raw page name - no filesystem encoding. The API handles spaces/underscores
   ## and curl_run handles URL encoding.
-  page_to_protect="$item_from_list"
-  log info "$counter_currently / $counter_total"
-  printf '%s\n' "mw-protect '$WIKI_URL' '$page_to_protect'"
+  page_to_protect="${item_from_list}"
+  log info "${counter_currently} / ${counter_total}"
+  printf '%s\n' "mw-protect '${WIKI_URL}' '${page_to_protect}'"
   protect_page
-  if [ "$protect_page_exit_code" = "0" ]; then
+  if [ "${protect_page_exit_code}" = "0" ]; then
     log info "Success at first attempt, ok."
     continue
-  elif [ "$protect_page_exit_code" = "254" ]; then
+  elif [ "${protect_page_exit_code}" = "254" ]; then
     log info "Got exit code 254. Login probably expired."
     login_function
     log info "Try again..."
     protect_page
   fi
 
-  if [ "$protect_page_exit_code" = "0" ]; then
+  if [ "${protect_page_exit_code}" = "0" ]; then
     log info "Success after second attempt, ok."
   else
     (( error_counter++ )) || true
-    log error "Failed to protect '$page_to_protect'!"
+    log error "Failed to protect '${page_to_protect}'!"
   fi
-done <"$list_file"
+done <"${list_file}"
 
-if [ "$error_counter" = "0" ]; then
+if [ "${error_counter}" = "0" ]; then
   log info "Success."
 else
-  die 1 "$error_counter error(s) detected."
+  die 1 "${error_counter} error(s) detected."
 fi

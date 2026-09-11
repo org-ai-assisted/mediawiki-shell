@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -27,6 +30,6 @@ fi
 not_as_root
 
 for wiki_url in "${@}"; do
-  mw-logout "$wiki_url"
-  mw-login "$wiki_url"
+  mw-logout "${wiki_url}"
+  mw-login "${wiki_url}"
 done

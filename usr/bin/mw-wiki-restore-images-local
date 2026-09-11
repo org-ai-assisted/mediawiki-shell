@@ -15,10 +15,12 @@
 
 set -o errexit
 set -o nounset
-set -o pipefail
 set -o errtrace
+set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source-path=SCRIPTDIR
 # shellcheck source=../share/mediawiki-shell/common

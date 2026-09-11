@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -31,14 +34,14 @@ check_vars_exist page_file
 
 ## Defense-in-depth: check page_file for malicious unicode before
 ## interpolating it into API URLs.
-printf '%s\n' "$page_file" | unicode-show
+printf '%s\n' "${page_file}" | unicode-show
 
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
 
-log info "WIKI_URL : $WIKI_URL"
-log info "WIKI_API : $WIKI_API"
-log info "page_file: $page_file"
+log info "WIKI_URL : ${WIKI_URL}"
+log info "WIKI_API : ${WIKI_API}"
+log info "page_file: ${page_file}"
 
 #mw-login-test "$WIKI_URL"
 
@@ -48,12 +51,12 @@ curl_run \
   "${curl_opts[@]}" \
   --output "${TMPFOLDER}/revid.json" \
   --get \
-  --data-urlencode "titles=$page_file" \
+  --data-urlencode "titles=${page_file}" \
   "${WIKI_API}?format=json&action=query&prop=info|flagged"
 
 lastrevid=$(jq -r ".query.pages[].lastrevid" -- "${TMPFOLDER}/revid.json")
 
-if grep -E -- '^[0-9]+$' <<<"$lastrevid" >/dev/null 2>&1; then
+if grep -E -- '^[0-9]+$' <<<"${lastrevid}" >/dev/null 2>&1; then
   true "Valid number."
 else
   die 1 "lastrevid not numeric!"
@@ -63,8 +66,8 @@ log info "Requesting csrf_token...    ${TMPFOLDER}/csrf_token.json"
 
 curl_run \
   "${curl_opts[@]}" \
-  --cookie "$cookie_jar" \
-  --cookie-jar "$cookie_jar" \
+  --cookie "${cookie_jar}" \
+  --cookie-jar "${cookie_jar}" \
   --header "Content-Type: application/json" \
   --header "Accept-Language: en-GB" \
   --header "Connection: keep-alive" \
@@ -86,8 +89,8 @@ log info "Requesting review-result... ${TMPFOLDER}/review-result.json"
 
 curl_run \
   "${curl_opts[@]}" \
-  --cookie "$cookie_jar" \
-  --cookie-jar "$cookie_jar" \
+  --cookie "${cookie_jar}" \
+  --cookie-jar "${cookie_jar}" \
   --output "${TMPFOLDER}/review-result.json" \
   --silent \
   --data-urlencode "token=${csrf_token}" \
@@ -124,21 +127,21 @@ curl_run \
 
 review_result=$(jq --raw-output '.review.result' -- "${TMPFOLDER}/review-result.json")
 
-if [ "$review_result" = "Success" ]; then
+if [ "${review_result}" = "Success" ]; then
   log info "Success."
   exit 0
 fi
 
 printf '%s\n' "${TMPFOLDER}/review-result.json"
-jq -- "${TMPFOLDER}/review-result.json"
+jq . -- "${TMPFOLDER}/review-result.json"
 
 review_error_code=$(jq --raw-output '.error.code' -- "${TMPFOLDER}/review-result.json")
-if [ "$review_error_code" = "notreviewable" ]; then
+if [ "${review_error_code}" = "notreviewable" ]; then
   log info "notreviewable"
   exit 0
 fi
 
-if [ "$review_error_code" = "permissiondenied" ]; then
+if [ "${review_error_code}" = "permissiondenied" ]; then
   die 254 "permissiondenied"
 fi
 

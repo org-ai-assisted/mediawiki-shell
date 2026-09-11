@@ -10,10 +10,11 @@
 
 set -o errexit
 set -o nounset
-set -o pipefail
 set -o errtrace
+set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 default_wiki_url="https://www.kicksecure.com/w"
 default_output_dir="${HOME}/derivative-backup/kicksecure-wiki-backup-media"

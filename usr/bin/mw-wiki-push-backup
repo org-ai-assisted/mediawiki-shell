@@ -9,6 +9,7 @@ set -o errtrace
 set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -102,44 +103,50 @@ backup_dir="$2"
 
 check_vars_exist wiki_url backup_dir
 
-if [ ! -d "$backup_dir" ]; then
-  die 1 "backup_dir '$backup_dir' does not exist!"
+if [ ! -d "${backup_dir}" ]; then
+  die 1 "backup_dir '${backup_dir}' does not exist!"
 fi
 
 ## backup_dir must be inside a git repository.
-if ! git -C "$backup_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  die 1 "backup_dir '$backup_dir' is not inside a git repository!"
+if ! git -C "${backup_dir}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  die 1 "backup_dir '${backup_dir}' is not inside a git repository!"
 fi
 
-log info "wiki_url      : $wiki_url"
-log info "backup_dir    : $backup_dir"
-log info "git_diff_arg  : $git_diff_arg"
-log info "edit_msg      : $edit_msg"
+log info "wiki_url      : ${wiki_url}"
+log info "backup_dir    : ${backup_dir}"
+log info "git_diff_arg  : ${git_diff_arg}"
+log info "edit_msg      : ${edit_msg}"
 log info "continue_from : ${continue_from-}"
 
-state_setup "$wiki_url"
+state_setup "${wiki_url}"
 
-mw-login-test "$wiki_url"
+mw-login-test "${wiki_url}"
 
 ## Get list of modified/added .mw files from git diff.
 ## --diff-filter=AM: only Added or Modified files (not Deleted).
 ## --name-only: output file names only.
 ## --relative: paths relative to backup_dir.
-modified_files="$(git -C "$backup_dir" diff --diff-filter=AM --name-only --relative "$git_diff_arg" -- '*.mw')" || true
+git_diff_rc=0
+modified_files="$(git -C "${backup_dir}" diff --diff-filter=AM --name-only --relative "${git_diff_arg}" -- '*.mw')" || git_diff_rc=$?
+## A failed 'git diff' (e.g. an unresolvable --git-diff-arg) also yields empty
+## stdout, so distinguish it from a genuine no-changes result before exiting 0.
+if [ "${git_diff_rc}" != "0" ]; then
+  die 1 "git diff failed in '${backup_dir}' (rc ${git_diff_rc}); is --git-diff-arg '${git_diff_arg}' valid?"
+fi
 
-if [ -z "$modified_files" ]; then
+if [ -z "${modified_files}" ]; then
   log info "No modified .mw files found. Nothing to push."
   exit 0
 fi
 
 ## Defense-in-depth: check filenames from git for malicious unicode
 ## (bidi overrides, homoglyphs, etc.) before decoding them to page titles.
-printf '%s\n' "$modified_files" | unicode-show
+printf '%s\n' "${modified_files}" | unicode-show
 
-counter_total="$(printf '%s\n' "$modified_files" | wc -l)"
+counter_total="$(printf '%s\n' "${modified_files}" | wc -l)"
 counter_currently=0
 
-log info "Found $counter_total modified .mw file(s) to push."
+log info "Found ${counter_total} modified .mw file(s) to push."
 
 # shellcheck disable=SC2034  # mutated by should_start_processing via nameref
 continue_state="no"
@@ -149,43 +156,43 @@ while IFS= read -r mw_file; do
   ## Convert filename back to page title.
   ## Uses decode_backup_filename_item() which strips .mw and runs full
   ## percent-decoding (urllib.parse.unquote), reversing set_backup_page_item().
-  page_title="$(decode_backup_filename_item "$mw_file")"
+  page_title="$(decode_backup_filename_item "${mw_file}")"
 
-  if ! should_start_processing "$counter_currently" "$page_title" "$continue_from" continue_state; then
-    log info "skip $counter_currently / $counter_total | $page_title"
+  if ! should_start_processing "${counter_currently}" "${page_title}" "${continue_from}" continue_state; then
+    log info "skip ${counter_currently} / ${counter_total} | ${page_title}"
     continue
   fi
 
-  if state_should_skip "$page_title"; then
-    log info "retry-skip $counter_currently / $counter_total | already done | $page_title"
+  if state_should_skip "${page_title}"; then
+    log info "retry-skip ${counter_currently} / ${counter_total} | already done | ${page_title}"
     continue
   fi
 
   file_path="${backup_dir}/${mw_file}"
-  assert_path_within_dir "$backup_dir" "$file_path"
+  assert_path_within_dir "${backup_dir}" "${file_path}"
 
-  if [ ! -r "$file_path" ]; then
-    log warn "SKIP $counter_currently / $counter_total | file not readable: $file_path"
+  if [ ! -r "${file_path}" ]; then
+    log warn "SKIP ${counter_currently} / ${counter_total} | file not readable: ${file_path}"
     continue
   fi
 
-  log info "push $counter_currently / $counter_total | $page_title | $file_path"
+  log info "push ${counter_currently} / ${counter_total} | ${page_title} | ${file_path}"
 
   push_rc=0
-  mw-edit "$wiki_url" "$file_path" "$page_title" "$edit_msg" || push_rc="$?"
-  if [ "$push_rc" = "0" ]; then
-    state_record_done "$page_title"
+  mw-edit "${wiki_url}" "${file_path}" "${page_title}" "${edit_msg}" || push_rc="$?"
+  if [ "${push_rc}" = "0" ]; then
+    state_record_done "${page_title}"
   else
-    state_handle_failure "$page_title" "mw-edit rc=$push_rc"
+    state_handle_failure "${page_title}" "mw-edit rc=${push_rc}"
   fi
 
-done <<< "$modified_files"
+done <<< "${modified_files}"
 
 state_finish
-if [ "$state_fail_count" -gt 0 ]; then
+if [ "${state_fail_count}" -gt 0 ]; then
   exit 2
 fi
 
 ## TODO: Should we print some sort of progress message in the failure
 ## path above too?
-log info "Done. Pushed $counter_currently / $counter_total page(s)."
+log info "Done. Pushed ${counter_currently} / ${counter_total} page(s)."
