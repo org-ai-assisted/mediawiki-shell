@@ -9,6 +9,8 @@ set -o errtrace
 set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -42,8 +44,8 @@ outfile="${2-}"
 
 check_vars_exist backup_dir
 
-if [ ! -d "$backup_dir" ]; then
-  die 2 "BACKUP_DIR '$backup_dir' is not a directory or does not exist!"
+if [ ! -d "${backup_dir}" ]; then
+  die 2 "BACKUP_DIR '${backup_dir}' is not a directory or does not exist!"
 fi
 
 ## Active-content / injection constructs that make a template a high-value
@@ -52,31 +54,31 @@ fi
 vulnerable_pattern='\{\{#css:|\{\{#widget:|\{\{#invoke:|\{\{#tag:|<html|<script|javascript:|<templatestyles|on(click|error|load|mouseover|focus|submit)[[:space:]]*='
 
 shopt -s nullglob
-template_file_list=( "$backup_dir"/Template:*.mw )
+template_file_list=( "${backup_dir}"/Template:*.mw )
 shopt -u nullglob
 
 if [ "${#template_file_list[@]}" -eq 0 ]; then
-  die 1 "No 'Template:*.mw' pages found in '$backup_dir'."
+  die 1 "No 'Template:*.mw' pages found in '${backup_dir}'."
 fi
 
 emit_vulnerable_titles() {
   local template_file file_base page_title
   for template_file in "${template_file_list[@]}"; do
-    if ! grep -qiE -- "$vulnerable_pattern" "$template_file"; then
+    if ! grep --quiet --ignore-case --extended-regexp -- "${vulnerable_pattern}" "${template_file}"; then
       continue
     fi
     file_base="${template_file##*/}"
     file_base="${file_base%.mw}"
     ## Percent-decode the filename back to a MediaWiki page title (restores
     ## '/' for subpages). Used only as an API title, never as a file path.
-    page_title="$(mw-urlencode --decode-filename-to-page "$file_base")"
-    printf '%s\n' "$page_title"
+    page_title="$(mw-urlencode --decode-filename-to-page "${file_base}")"
+    printf '%s\n' "${page_title}"
   done
 }
 
-if [ -z "$outfile" ]; then
+if [ -z "${outfile}" ]; then
   emit_vulnerable_titles | sort -u
 else
-  emit_vulnerable_titles | sort -u >"$outfile"
-  log info "Wrote vulnerable template list to '$outfile'."
+  emit_vulnerable_titles | sort -u >"${outfile}"
+  log info "Wrote vulnerable template list to '${outfile}'."
 fi

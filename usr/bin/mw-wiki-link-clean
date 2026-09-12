@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -135,43 +138,43 @@ string_replace_tuples_list="\
 >
 "
 
-if grep --ignore-case --fixed-strings "$grep_skip_fixed_string_list_to_exclude" <<<"$link_result_cleaned" >/dev/null 2>&1; then
+if grep --ignore-case --fixed-strings "${grep_skip_fixed_string_list_to_exclude}" <<<"${link_result_cleaned}" >/dev/null 2>&1; then
   exit 0
 fi
 
 ## '<ref name=f_secure>https://blog.f-secure.com/cold-boot-attacks/'
-if grep --fixed-strings --ignore-case "name=" <<<"$link_result_cleaned" >/dev/null 2>&1; then
+if grep --fixed-strings --ignore-case "name=" <<<"${link_result_cleaned}" >/dev/null 2>&1; then
   longest_match_after_character=">"
   link_result_cleaned="${link_result_cleaned#*"${longest_match_after_character}"}"
 fi
 
 while read -r replace_config_line; do
-  if [ -z "$replace_config_line" ]; then
+  if [ -z "${replace_config_line}" ]; then
     log error "replace_config_line is empty!"
     exit 1
   fi
 
-  log debug "replace_config_line: '$replace_config_line'"
-  read -r first second <<<"$replace_config_line"
+  log debug "replace_config_line: '${replace_config_line}'"
+  read -r first second <<<"${replace_config_line}"
 
-  log debug "first: $first"
-  log debug "second: $second"
+  log debug "first: ${first}"
+  log debug "second: ${second}"
 
-  if [ -z "$first" ]; then
+  if [ -z "${first}" ]; then
     die 1 "first is empty!"
   fi
 
-  link_result_cleaned="$(str_replace "$first" "$second" <<<"$link_result_cleaned" 2>/dev/null)"
-done < <(stecho "$string_replace_tuples_list")
+  link_result_cleaned="$(str_replace "${first}" "${second}" <<<"${link_result_cleaned}" 2>/dev/null)"
+done < <(stecho "${string_replace_tuples_list}")
 
 first='"'
 second=""
-link_result_cleaned="$(str_replace "$first" "$second" <<<"$link_result_cleaned" 2>/dev/null)"
+link_result_cleaned="$(str_replace "${first}" "${second}" <<<"${link_result_cleaned}" 2>/dev/null)"
 
-case "$link_result_cleaned" in
+case "${link_result_cleaned}" in
   http://|https://|"()")
     exit 0
     ;;
 esac
 
-stprint "$link_result_cleaned"
+stprint "${link_result_cleaned}"

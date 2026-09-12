@@ -7,6 +7,10 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -31,32 +35,32 @@ check_vars_exist page_file page_file_local
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
 
-log info "Downloading file '${WIKI_INDEX}' '$page_file'..."
+log info "Downloading file '${WIKI_INDEX}' '${page_file}'..."
 
-if test -d "$page_file_local"; then
-  die 1 "page_file_local '$page_file_local' is a folder!"
+if test -d "${page_file_local}"; then
+  die 1 "page_file_local '${page_file_local}' is a folder!"
 fi
 
-safe-rm -f -- "$page_file_local"
-touch -- "$page_file_local"
-test -w "$page_file_local"
+safe-rm -f -- "${page_file_local}"
+touch -- "${page_file_local}"
+test -w "${page_file_local}"
 
 ## mw-file-to-url gets already encoded URL from MediaWiki API.
-mw-file-to-url "$WIKI_URL" "${TMPFOLDER}/wiki-remote-file-url.txt" "$page_file"
+mw-file-to-url "${WIKI_URL}" "${TMPFOLDER}/wiki-remote-file-url.txt" "${page_file}"
 
 url="$(stcat "${TMPFOLDER}/wiki-remote-file-url.txt")"
 ## url contains encoded URL.
 ## url example:
 ## https://www.kicksecure.com/w/images/7/74/MediaWiki-2020-logo-%28black%29.svg
 
-log info "saving file to page_file_local: '$page_file_local'"
+log info "saving file to page_file_local: '${page_file_local}'"
 
 curl_run_no_encode=true \
   curl_run \
     "${curl_opts[@]}" \
     --header "Accept-Language: en-GB" \
     --header "Expect:" \
-    --output "$page_file_local" \
-    "$url"
+    --output "${page_file_local}" \
+    "${url}"
 
 log info "Fetch file success."

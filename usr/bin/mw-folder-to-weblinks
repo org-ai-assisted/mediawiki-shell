@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 ## Does not unduplicate. That should be done with a different script.
 
@@ -31,7 +34,7 @@ check_vars_exist wiki_web input_dir
 
 not_as_root
 
-files_list=("$input_dir"/*.mw)
+files_list=("${input_dir}"/*.mw)
 
 ## Defense-in-depth: check .mw filenames from disk for malicious unicode
 ## (bidi overrides, homoglyphs, etc.) before processing them.
@@ -45,15 +48,15 @@ done
 counter=0
 for file_name in "${files_list[@]}"; do
   (( counter++ )) || true
-  base_name="$(basename "$file_name")"
+  base_name="$(basename "${file_name}")"
   without_file_extension="${base_name%.mw}"
-  log debug "## $counter / $total | file_name: '$base_name' | $wiki_web/$without_file_extension"
-  test -r "$file_name"
+  log debug "## ${counter} / ${total} | file_name: '${base_name}' | ${wiki_web}/${without_file_extension}"
+  test -r "${file_name}"
 
-  web_links_list="$(mw-file-to-weblinks "$file_name")"
-  for web_link_item in $web_links_list; do
-    web_link_cleaned="$(mw-wiki-link-clean "$web_link_item")"
-    if [ -z "$web_link_cleaned" ]; then
+  web_links_list="$(mw-file-to-weblinks "${file_name}")"
+  for web_link_item in ${web_links_list}; do
+    web_link_cleaned="$(mw-wiki-link-clean "${web_link_item}")"
+    if [ -z "${web_link_cleaned}" ]; then
       continue
     fi
     ## Thanks to:
@@ -61,11 +64,11 @@ for file_name in "${files_list[@]}"; do
     ## https://stackoverflow.com/users/26428/dennis-williamson
     ## https://stackoverflow.com/a/3184819/2605155
     regex='^(https?)://[-[:alnum:]\+&@#/%?=~_|!:,.;]*[-[:alnum:]\+&@#/%=~_|]'
-    string="$web_link_cleaned"
-    if [[ $string =~ $regex ]]; then
-      stprint "$web_link_cleaned"
+    string="${web_link_cleaned}"
+    if [[ ${string} =~ ${regex} ]]; then
+      stprint "${web_link_cleaned}"
     else
-      stecho "## invalid link: $web_link_cleaned"
+      stecho "## invalid link: ${web_link_cleaned}"
     fi
   done
 done

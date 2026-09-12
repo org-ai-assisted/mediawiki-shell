@@ -7,6 +7,10 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -30,20 +34,20 @@ check_vars_exist page_title new_file
 
 ## Defense-in-depth: check page_title for malicious unicode before
 ## interpolating it into API URLs.
-printf '%s\n' "$page_title" | unicode-show
+printf '%s\n' "${page_title}" | unicode-show
 
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
 
-log info "Fetching '${WIKI_INDEX}' '$page_title' '$new_file'..."
+log info "Fetching '${WIKI_INDEX}' '${page_title}' '${new_file}'..."
 
-if test -d "$new_file"; then
-  die 1 "new_file '$new_file' is a folder!"
+if test -d "${new_file}"; then
+  die 1 "new_file '${new_file}' is a folder!"
 fi
 
-safe-rm -f -- "$new_file"
-touch -- "$new_file"
-test -w "$new_file"
+safe-rm -f -- "${new_file}"
+touch -- "${new_file}"
+test -w "${new_file}"
 
 # curl_run \
 #    "${curl_opts[@]}" \
@@ -58,12 +62,12 @@ curl_run \
   "${curl_opts[@]}" \
   --header "Accept-Language: en-GB" \
   --header "Expect:" \
-  --output "$new_file" \
+  --output "${new_file}" \
   --get \
-  --data-urlencode "title=$page_title" \
+  --data-urlencode "title=${page_title}" \
   --data-urlencode "action=raw" \
   "${WIKI_INDEX}"
 
-test -r "$new_file"
+test -r "${new_file}"
 
 log info "Fetch success."

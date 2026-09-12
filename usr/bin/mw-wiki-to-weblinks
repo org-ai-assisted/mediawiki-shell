@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 ## Does not unduplicate. That should be done with a different script.
 
@@ -27,7 +30,7 @@ input_dir="$1/"
 
 not_as_root
 
-mkdir -p -- "$TMPFOLDER/wiki-links"
+mkdir -p -- "${TMPFOLDER}/wiki-links"
 
 test -d "${input_dir}kicksecure-wiki-backup"
 test -d "${input_dir}whonix-wiki-backup"
@@ -37,14 +40,17 @@ for dir in "${input_dir}kicksecure-wiki-backup" "${input_dir}whonix-wiki-backup"
   git -C "${dir}" pull
 done
 
-safe-rm -f -- "$TMPFOLDER/wiki-links/all-links.txt"
+safe-rm -f -- "${TMPFOLDER}/wiki-links/all-links.txt"
 
-log info "Try: tail -f -- $TMPFOLDER/wiki-links/all-links.txt"
+log info "Try: tail -f -- ${TMPFOLDER}/wiki-links/all-links.txt"
 
-mw-folder-to-weblinks https://www.kicksecure.com/wiki "${input_dir}kicksecure-wiki-backup" | tee -a -- "$TMPFOLDER/wiki-links/all-links.txt"
-mw-folder-to-weblinks https://www.whonix.org/wiki "${input_dir}whonix-wiki-backup" | tee -a -- "$TMPFOLDER/wiki-links/all-links.txt"
+mw-folder-to-weblinks https://www.kicksecure.com/wiki "${input_dir}kicksecure-wiki-backup" | tee -a -- "${TMPFOLDER}/wiki-links/all-links.txt"
+mw-folder-to-weblinks https://www.whonix.org/wiki "${input_dir}whonix-wiki-backup" | tee -a -- "${TMPFOLDER}/wiki-links/all-links.txt"
 
-grep --invert-match -- "## " "$TMPFOLDER/wiki-links/all-links.txt" | tee -- "$TMPFOLDER/wiki-links/links-without-comments.txt" >/dev/null
-sort --unique -- "$TMPFOLDER/wiki-links/links-without-comments.txt" | tee -- "$TMPFOLDER/wiki-links/links-sorted.txt" >/dev/null
+## grep exits 1 (not an error) when every line is a '## ' comment, i.e. no
+## links were found; under pipefail+errexit that would abort. Accept exit 1,
+## still propagate a real grep error (exit 2). tee dropped: it only wrote the file.
+grep --invert-match -- "## " "${TMPFOLDER}/wiki-links/all-links.txt" >"${TMPFOLDER}/wiki-links/links-without-comments.txt" || [ "$?" -eq 1 ]
+sort --unique -- "${TMPFOLDER}/wiki-links/links-without-comments.txt" | tee -- "${TMPFOLDER}/wiki-links/links-sorted.txt" >/dev/null
 
-log info "Try: cat -- $TMPFOLDER/wiki-links/links-sorted.txt"
+log info "Try: cat -- ${TMPFOLDER}/wiki-links/links-sorted.txt"

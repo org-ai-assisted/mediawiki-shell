@@ -15,10 +15,11 @@
 
 set -o errexit
 set -o nounset
-set -o pipefail
 set -o errtrace
+set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source-path=SCRIPTDIR
 # shellcheck source=../share/mediawiki-shell/common
