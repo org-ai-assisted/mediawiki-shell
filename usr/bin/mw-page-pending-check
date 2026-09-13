@@ -7,6 +7,9 @@ set -o errexit
 set -o nounset
 set -o errtrace
 set -o pipefail
+shopt -s inherit_errexit
+shopt -s shift_verbose
+export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -28,7 +31,7 @@ page_title="$2"
 
 ## Defense-in-depth: check page_title for malicious unicode before
 ## interpolating it into API URLs.
-printf '%s\n' "$page_title" | unicode-show
+printf '%s\n' "${page_title}" | unicode-show
 
 # shellcheck source=../share/mediawiki-shell/wiki-config
 source /usr/share/mediawiki-shell/wiki-config
@@ -39,19 +42,19 @@ page_pending_status_json="$(
   curl_run \
     "${curl_opts[@]}" \
     --get \
-    --data-urlencode "titles=$page_title" \
+    --data-urlencode "titles=${page_title}" \
     "${WIKI_API}?format=json&action=query&prop=info|flagged"
 )"
 
-log debug "$page_pending_status_json: '$page_pending_status_json'"
+log debug "${page_pending_status_json}: '${page_pending_status_json}'"
 
 ## Use a jq path query, not 'grep -- pending_since' against the
 ## pretty-printed JSON: the latter false-positive matches any page
 ## whose title contains the substring "pending_since", which would
 ## let an editor silently keep a page out of backups by naming it
 ## accordingly.
-if jq -e '.query.pages[]? | .flagged?.pending_since? // empty' <<<"$page_pending_status_json" >/dev/null 2>&1; then
-  die 10 "'$WIKI_URL' '$page_title' page has PENDING EDITS!"
+if jq -e '.query.pages[]? | .flagged?.pending_since? // empty' <<<"${page_pending_status_json}" >/dev/null 2>&1; then
+  die 10 "'${WIKI_URL}' '${page_title}' page has PENDING EDITS!"
 fi
 
 log info "No pending edits for file, ok."
