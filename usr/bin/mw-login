@@ -17,7 +17,6 @@ source /usr/share/mediawiki-shell/common
 pass_file=""
 
 exit_handler_login() {
-  ## Capture $? first: the cleanup below clobbers it before exit_handler runs.
   local exit_code="$?"
   if [ -n "${pass_file-}" ]; then
     safe-rm -f -- "${pass_file}"

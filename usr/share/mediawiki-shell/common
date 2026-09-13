@@ -316,8 +316,8 @@ state_finish() {
 }
 
 exit_handler() {
-  ## Honor an explicitly passed code (a caller that must clean up first, and so
-  ## clobbers $?, passes the saved code); otherwise read $? at trap time.
+  ## Honor an explicitly passed code, otherwise read $? at trap time. Note that
+  ## nothing explicitly passes an exit code yet.
   local exit_code="${1:-$?}"
   trap - INT HUP ABRT QUIT EXIT
   if [ "${exit_code}" = "0" ]; then

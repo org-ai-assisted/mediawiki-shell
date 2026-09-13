@@ -10,7 +10,7 @@ set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
 export LC_ALL=C
-## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
