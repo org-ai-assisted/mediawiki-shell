@@ -1,3 +1,95 @@
+commit e55278c56a43b263538e05660749e5e8064ba04f
+Merge: 459cc7f 7e5fc6b
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Sun Sep 13 09:35:08 2026 -0400
+
+    Merge remote-tracking branch 'ArrayBolt3/arraybolt3/trixie'
+
+commit 7e5fc6be30abb7d8f4af5ec5f96d6b0a8d2b668e
+Author: Aaron Rainbolt <arraybolt3@gmail.com>
+Date:   Sat Sep 12 23:25:53 2026 -0400
+
+    Polish
+
+commit ac6fc7d258953373790431c0595756296d392c66
+Merge: 459cc7f fde4384
+Author: Aaron Rainbolt <arraybolt3@gmail.com>
+Date:   Fri Sep 11 20:13:37 2026 -0400
+
+    Merge branch 'ai' into arraybolt3/trixie
+
+commit fde4384a2d50c62421653e115a5c49f1268ef36b
+Author: claude (dev523 9e89f6dd-03c4-4491-adce-ee67bc776e03) <noreply@anthropic.com>
+Date:   Fri Sep 11 06:12:51 2026 -0400
+
+    AGENTS: add Conventions (LC_ALL=C design, sibling-symlink gate)
+
+commit 8d3246499488753c0befa0ff212db564dbfbe796
+Author: claude (dev474 c7439536-fad8-4884-b71a-d2f3c4c23905) <noreply@anthropic.com>
+Date:   Mon Sep 7 11:44:38 2026 -0400
+
+    rename has.sh to has.bsh (bashism convention)
+
+    Sourced helper-scripts lib uses bashisms; .bsh marks it. Path-only edit.
+
+commit 31d13c6073fcbb6fed0eeed65bc5e4aea3e2f945
+Merge: 082ac99 459cc7f
+Author: claude (dev474 c7439536-fad8-4884-b71a-d2f3c4c23905) <noreply@anthropic.com>
+Date:   Mon Sep 7 11:44:38 2026 -0400
+
+    Merge branch 'master' into ai
+
+commit 459cc7f8b2ed63fc428ae7a02762421906027c59
+Author: Patrick Schleizer <adrelanos@whonix.org>
+Date:   Sun Sep 6 16:44:18 2026 +0000
+
+    bumped changelog version
+
+commit 082ac99abf90261555961971a2feceff5bf7de9f
+Author: claude (dev390 67e4dd7d-2668-46f6-a1ed-c75b34987b93) <noreply@anthropic.com>
+Date:   Mon Aug 31 06:29:05 2026 -0400
+
+    Move offline tests to dist-ai; opt into dist-ai CI
+
+    The offline unit suite now lives in org-ai-assisted/dist-ai as
+    mediawiki-shell-tests; run here via the managed consumer wrapper.
+
+    - Remove tests/unit-tests.bash and the local-unit-tests.yml workflow.
+    - Add consumer-dist-ai-tests.yml (byte-identical managed template).
+    - dm-consumer.yml apt-packages: the suite's runtime deps (no pytest).
+    - CLAUDE.md stub + AGENTS.md Tests pointer.
+
+commit cd27e34b3e744a97303a741817428e962c9d33f7
+Author: claude (dev390 67e4dd7d-2668-46f6-a1ed-c75b34987b93) <noreply@anthropic.com>
+Date:   Mon Aug 31 05:50:45 2026 -0400
+
+    Fix curl form injection + 3 error-path bugs
+
+    Found by ai-review of the touched files; all pre-existing.
+
+    - mw-file-upload: --form-string for literal fields, so a page title like
+      'File:@/etc/passwd' is not read as a local file and POSTed to the wiki.
+    - mw-flagged-revisions-approve-page: 'jq' needs a filter; bare 'jq -- FILE'
+      crashed under errexit before the notreviewable/permissiondenied branches,
+      breaking the exit-254 relogin contract mw-flagged-revisions-approve-all uses.
+    - mw-wiki-push-backup: a failed 'git diff' (bad --git-diff-arg) no longer
+      reads as "nothing to push" and exits 0.
+    - mw-wiki-to-weblinks: grep finding zero non-comment links (exit 1) no longer
+      aborts the pipeline under pipefail; a real grep error still propagates.
+
+commit 1c31d90fd834a5a3e71551d0dbda16173bc6f49d
+Author: claude (dev390 67e4dd7d-2668-46f6-a1ed-c75b34987b93) <noreply@anthropic.com>
+Date:   Mon Aug 31 05:02:22 2026 -0400
+
+    Use strict header + LC_ALL=C across mw-* scripts
+
+    - Drop the no-strict waivers: LC_ALL=C is safe now that nocasematch (the
+      sole Unicode case-fold) is replaced by ASCII ${var,,}, and the Python
+      tools run UTF-8 mode under the C locale.
+    - exit_handler honors an explicit code, so mw-login no longer exits 0 when
+      its pass-file cleanup clobbers $? before the EXIT trap.
+    - /tmp waivers cover usage() example paths only, not code paths.
+
 commit 2b566d525911e8939d71901be6e630423afb590d
 Merge: 7f33a4a a595ce6
 Author: Patrick Schleizer <adrelanos@whonix.org>
