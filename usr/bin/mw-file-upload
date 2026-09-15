@@ -10,7 +10,7 @@ set -o pipefail
 shopt -s inherit_errexit
 shopt -s shift_verbose
 export LC_ALL=C
-## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths, not code.
+## style-ok: no-tmp-hardcode -- /tmp appears only in usage() example paths.
 
 # shellcheck source=../share/mediawiki-shell/common
 source /usr/share/mediawiki-shell/common
@@ -111,11 +111,6 @@ fi
 
 dry_run_skip "upload file '${page_file}' to '${WIKI_URL}'"
 
-## --form-string for the literal fields below: --form would treat a leading
-## '@'/'<' or a ';type='/';filename=' substring in the value as a
-## local-file/metadata directive, and filename/comment carry
-## attacker-influenced page titles (e.g. a source-wiki page 'File:@/etc/passwd').
-## Only the real file upload (file=@...) uses --form.
 curl_run \
   "${curl_opts[@]}" \
   --cookie "${cookie_jar}" \

@@ -185,8 +185,6 @@ strip_category_tag() {
   local infile outfile line trimmed trimmed_lower category_lower
   infile="$1"
   outfile="$2"
-  ## Case-insensitive compare by lowercasing both sides (LC_ALL=C folds ASCII,
-  ## which is all the '[[category:' keyword and the tag need).
   category_lower="${multiwiki_category,,}"
   while IFS= read -r line || [ -n "${line}" ]; do
     ## Trim leading and trailing whitespace for the comparison only.

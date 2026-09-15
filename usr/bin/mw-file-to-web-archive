@@ -37,7 +37,7 @@ archive_check() {
   # shellcheck disable=SC2076
   if [[ "${link}" =~ "https://web.archive.org/web/" ]]; then
     printf '%s\n' "Already archived according to the web archive. curl_http_status_code: '${curl_http_status_code}'"
-    printf '%s\n%s\n' "$1" "${link}" | tee -a -- "${TMPFOLDER}/webarchive/already-archived.txt"
+    printf '%s\n' "$1" "${link}" | tee -a -- "${TMPFOLDER}/webarchive/already-archived.txt"
     return 0
   fi
 
