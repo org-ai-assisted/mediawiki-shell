@@ -28,7 +28,7 @@ Example:
 default_wiki_url="https://www.kicksecure.com/w"
 default_output_dir="${HOME}/derivative-backup/kicksecure-wiki-backup"
 default_fetcher="mw-wiki-fetch-backup"
-if [[ "${1-}" =~ (-h|--help) ]]; then
+if [[ "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 

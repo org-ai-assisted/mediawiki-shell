@@ -25,7 +25,7 @@ Example:
 }
 
 default_new_file="${TMPFOLDER}/fetched-wiki-page"
-if [[ -z "${2-}" || "${1-}" =~ (-h|--help) ]]; then
+if [[ -z "${2-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 

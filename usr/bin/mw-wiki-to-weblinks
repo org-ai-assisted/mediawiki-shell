@@ -23,7 +23,7 @@ Example:
   exit 1
 }
 
-if [[ -z "${1-}" || "${1-}" =~ (-h|--help) ]]; then
+if [[ -z "${1-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 input_dir="$1/"
@@ -49,7 +49,7 @@ mw-folder-to-weblinks https://www.whonix.org/wiki "${input_dir}whonix-wiki-backu
 
 ## grep exits 1 when no match is found but otherwise no error occurs. We
 ## tolerate that, but we don't want to allow tee to error out though.
-if ! grep --invert-match -- "## " "$TMPFOLDER/wiki-links/all-links.txt" | tee -- "$TMPFOLDER/wiki-links/links-without-comments.txt" >/dev/null; then
+if ! grep --invert-match -- "## " "${TMPFOLDER}/wiki-links/all-links.txt" | tee -- "${TMPFOLDER}/wiki-links/links-without-comments.txt" >/dev/null; then
   capture_status=( "${PIPESTATUS[@]}" )
   [ "${capture_status[0]}" -eq 1 ] && [ "${capture_status[1]}" -eq 0 ]
 fi

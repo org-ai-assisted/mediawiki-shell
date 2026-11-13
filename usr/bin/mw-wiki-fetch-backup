@@ -37,7 +37,7 @@ Example:
   exit 1
 }
 
-if [[ -z "${3-}" || "${1-}" =~ (-h|--help) ]]; then
+if [[ -z "${3-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 

@@ -12,7 +12,8 @@ shopt -s shift_verbose
 export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
-source /usr/share/mediawiki-shell/common
+## Overridable for tests (dist-ai convention); unset -> production path, byte-identical.
+source "${MEDIAWIKI_SHELL_COMMON:-/usr/share/mediawiki-shell/common}"
 
 archive_check() {
   stecho "Checking if already archived by asking web archive... https://web.archive.org/web/$1"
@@ -20,27 +21,35 @@ archive_check() {
   curl_http_status_code="$(${curl} "${curl_web_archive_opts[@]}" "https://web.archive.org/web/$1")" || true
   curl_output="$(stcat "${TMPFOLDER}/webarchive/curl-output-temp")"
 
+  ## Check for a web archive memento 'location:' header FIRST, before the status: curl
+  ## --head --location replays the CAPTURED page, so the FINAL status is that page's own
+  ## code (200, 403, 404, 500, ...), NOT an "archived?" signal -- a replayed 403/404 is a
+  ## 302 to a memento then the captured code, whereas a genuine exclusion/miss is a DIRECT
+  ## 403/404 with no memento. --location prints EVERY hop's headers and the canonical memento
+  ## redirect can be a LATER hop (an earlier hop may be a relative or normalization redirect),
+  ## so scan all hops. Match the header name case-insensitively (RFC 9110) and anchor the value
+  ## to the web.archive.org memento host so a mid-value substring or a look-alike host is not
+  ## accepted.
+  location_line="$(grep -i -m1 -E -- '^location:[[:space:]]+https://web\.archive\.org/web/' <<<"${curl_output}" || true)"
+  if [ -n "${location_line}" ]; then
+    ## Extract from the matched 'location:' line only, so a memento URL appearing in a Link: or
+    ## other header is not recorded in its place.
+    link="$(grep -i -o -E -- 'https://web\.archive\.org/web/[^[:space:][:cntrl:]]+' <<<"${location_line}" | head -n1 || true)"
+    printf '%s\n' "Already archived according to the web archive. curl_http_status_code: '${curl_http_status_code}'"
+    printf '%s\n' "$1" "${link}" | tee -a -- "${TMPFOLDER}/webarchive/already-archived.txt"
+    return 0
+  fi
+
+  ## No memento: the status is the web archive's own control response.
   if [ "${curl_http_status_code}" = "403" ]; then
     printf '%s\n' "Excluded from web archive."
     stecho "$1" | tee -a -- "${TMPFOLDER}/webarchive/already-known-excluded.txt"
     return 0
   fi
 
-  if [ "${curl_http_status_code}" = "404" ]; then
-    printf '%s\n' "Down according to web archive. curl_http_status_code: '${curl_http_status_code}'"
-    stecho "$1" | tee -a -- "${TMPFOLDER}/webarchive/already-known-down.txt"
-    return 0
-  fi
-
-  location="$(grep -- '^location:' <<<"${curl_output}")"
-  link="$(awk '{ print $2 }' <<<"${location}")"
-  # shellcheck disable=SC2076
-  if [[ "${link}" =~ "https://web.archive.org/web/" ]]; then
-    printf '%s\n' "Already archived according to the web archive. curl_http_status_code: '${curl_http_status_code}'"
-    printf '%s\n' "$1" "${link}" | tee -a -- "${TMPFOLDER}/webarchive/already-archived.txt"
-    return 0
-  fi
-
+  ## No memento (typically 404 from /web/<url>) means the web archive holds no snapshot,
+  ## i.e. not yet archived -- return non-zero so the caller proceeds to archive_save. (A
+  ## truly down ORIGIN is detected by archive_save via HTTP 523, not here.)
   printf '%s\n' "Not yet archived. curl_http_status_code: ${curl_http_status_code} | curl_output:"
   printf '%s\n' "${curl_output}"
   return 1
@@ -52,14 +61,27 @@ archive_save() {
   curl_http_status_code="$(curl_run "${curl_web_archive_opts[@]}" "https://web.archive.org/save/$1")" || true
   curl_output="$(stcat "${TMPFOLDER}/webarchive/curl-output-temp")"
 
-  if [ "${curl_http_status_code}" = "302" ]; then
+  ## Success detection mirrors archive_check. Check for a web archive memento 'location:'
+  ## header FIRST, before the status codes: curl --head --location replays the CAPTURED page,
+  ## so the FINAL status is that page's own code (200, 403, 404, 500, ...), NOT save success.
+  ## The terminal codes below are the SAVE endpoint's own control responses, which carry no
+  ## memento, so a successful save of a page that replays e.g. 403 is still recorded as
+  ## archived here rather than misclassified as excluded. --location prints EVERY hop's headers
+  ## and the canonical memento redirect can be a LATER hop (an earlier hop may be a relative or
+  ## normalization redirect), so scan all hops. Match the header name case-insensitively
+  ## (RFC 9110) and anchor the value to the web.archive.org memento host so a mid-value
+  ## substring or a look-alike host is not recorded as archived.
+  location_line="$(grep -i -m1 -E -- '^location:[[:space:]]+https://web\.archive\.org/web/' <<<"${curl_output}" || true)"
+  if [ -n "${location_line}" ]; then
+    ## Extract from the matched 'location:' line only, so a memento URL appearing in a Link: or
+    ## other header is not recorded in its place.
+    link="$(grep -i -o -E -- 'https://web\.archive\.org/web/[^[:space:][:cntrl:]]+' <<<"${location_line}" | head -n1 || true)"
     printf '%s\n' "Archived. Web archive reported that archiving succeeded."
-    location="$(grep -- '^location:' <<<"${curl_output}")"
-    link="$(awk -- '{ print $2 }' <<<"${location}")"
-    printf '%s\n' "${link}"
+    printf '%s\n' "$1" "${link}" | tee -a -- "${TMPFOLDER}/webarchive/already-archived.txt"
     return 0
   fi
 
+  ## No memento: the status is the save endpoint's own control response.
   case "${curl_http_status_code}" in
     523)
       printf '%s\n' "Origin link down."
@@ -95,7 +117,14 @@ Example:
   exit 1
 }
 
-if [[ -z "${1-}" || "${1-}" =~ (-h|--help) ]]; then
+## Sourced by a test (sourceable skill): the function defs above are all that is wanted,
+## so stop here. '(return 0)' succeeds only when sourced; when executed it fails and the
+## run continues.
+if (return 0 2>/dev/null); then
+  return 0
+fi
+
+if [[ -z "${1-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 not_as_root
