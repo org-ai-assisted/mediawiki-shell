@@ -27,9 +27,11 @@ archive_check() {
   fi
 
   if [ "${curl_http_status_code}" = "404" ]; then
-    printf '%s\n' "Down according to web archive. curl_http_status_code: '${curl_http_status_code}'"
-    stecho "$1" | tee -a -- "${TMPFOLDER}/webarchive/already-known-down.txt"
-    return 0
+    ## 404 from /web/<url> means the web archive holds NO snapshot, i.e. not yet
+    ## archived -- return non-zero so the caller proceeds to archive_save. (A truly
+    ## down ORIGIN is detected by archive_save via HTTP 523, not here.)
+    printf '%s\n' "Not archived yet (web archive has no snapshot). curl_http_status_code: '${curl_http_status_code}'"
+    return 1
   fi
 
   location="$(grep -- '^location:' <<<"${curl_output}")"
@@ -95,7 +97,7 @@ Example:
   exit 1
 }
 
-if [[ -z "${1-}" || "${1-}" =~ (-h|--help) ]]; then
+if [[ -z "${1-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 not_as_root

@@ -24,7 +24,7 @@ Example:
   exit 1
 }
 
-if [[ -z "${2-}" || "${1-}" =~ (-h|--help) ]]; then
+if [[ -z "${2-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
 fi
 wiki_web="$1"
