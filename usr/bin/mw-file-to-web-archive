@@ -12,7 +12,8 @@ shopt -s shift_verbose
 export LC_ALL=C
 
 # shellcheck source=../share/mediawiki-shell/common
-source /usr/share/mediawiki-shell/common
+## Overridable for tests (dist-ai convention); unset -> production path, byte-identical.
+source "${MEDIAWIKI_SHELL_COMMON:-/usr/share/mediawiki-shell/common}"
 
 archive_check() {
   stecho "Checking if already archived by asking web archive... https://web.archive.org/web/$1"
@@ -54,14 +55,7 @@ archive_save() {
   curl_http_status_code="$(curl_run "${curl_web_archive_opts[@]}" "https://web.archive.org/save/$1")" || true
   curl_output="$(stcat "${TMPFOLDER}/webarchive/curl-output-temp")"
 
-  if [ "${curl_http_status_code}" = "302" ]; then
-    printf '%s\n' "Archived. Web archive reported that archiving succeeded."
-    location="$(grep -- '^location:' <<<"${curl_output}")"
-    link="$(awk -- '{ print $2 }' <<<"${location}")"
-    printf '%s\n' "${link}"
-    return 0
-  fi
-
+  ## Terminal error codes first.
   case "${curl_http_status_code}" in
     523)
       printf '%s\n' "Origin link down."
@@ -84,6 +78,20 @@ archive_save() {
       ;;
   esac
 
+  ## Success detection mirrors archive_check: curl_web_archive_opts use --location, so a
+  ## redirected save reports the FINAL snapshot code (HTTP 200), not the 302. Detect the
+  ## snapshot from the 'location:' header instead of requiring an exact 302, and record it
+  ## to already-archived.txt -- otherwise a successful save is misclassified into the
+  ## unknown-case branch below and never recorded.
+  location="$(grep -- '^location:' <<<"${curl_output}" || true)"
+  link="$(awk -- '{ print $2 }' <<<"${location}")"
+  # shellcheck disable=SC2076
+  if [ "${curl_http_status_code}" = "302" ] || [[ "${link}" =~ "https://web.archive.org/web/" ]]; then
+    printf '%s\n' "Archived. Web archive reported that archiving succeeded."
+    printf '%s\n' "$1" "${link}" | tee -a -- "${TMPFOLDER}/webarchive/already-archived.txt"
+    return 0
+  fi
+
   printf '%s\n' "Unknown case. curl_http_status_code: ${curl_http_status_code} | curl_output:"
   stecho "${curl_output}"
   stecho "$1" | tee -a -- "${TMPFOLDER}/webarchive/already-unknown-case-error.txt"
@@ -96,6 +104,13 @@ Example:
   ${0##*/} ~/sourcesown/web-links.txt" >&2
   exit 1
 }
+
+## Sourced by a test (sourceable skill): the function defs above are all that is wanted,
+## so stop here. '(return 0)' succeeds only when sourced; when executed it fails and the
+## run continues.
+if (return 0 2>/dev/null); then
+  return 0
+fi
 
 if [[ -z "${1-}" || "${1-}" == "-h" || "${1-}" == "--help" ]]; then
   usage
